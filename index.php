@@ -2,23 +2,38 @@
 
 class GestionDB{
 
-   private $datos = array( // conexion credentials
+   // conexion credentials
+   private $datos = array( 
 					      "host" => "localhost", 
-					      "user" => "username",
-					      "pass" => "password"
+					      "user" => "laravel",
+					      "pass" => "Newm00n**"
 					    );
-   	private $dbe = ["information_schema","mysql","performance_schema","phpmyadmin"]; //database exclude
-   	private $dbs;  // databases select
-    private static $_mysqli; // mysqli
-    private static $instancia; // singleton
-    private $interface; // interface type
-    private $msg_errors = ["web" => "<b><h1 style='color:red;'> %s </h1></b><br>", "cli" => "%s\n" ]; // print errors
 
-    private function __construct(){
+    //esclude databases squema
+   	private $dbe = ["information_schema","mysql","performance_schema","phpmyadmin"];
+   	
+   	// databases select
+   	private $dbs;
+
+   	// mysqli instance
+    private static $_mysqli;
+
+    // singleton instance
+    private static $instancia;
+
+    // sapi interface type
+    private $interface; 
+
+    // print format errors
+    private $msg_errors = ["web" => "<b><h1 style='color:red;'> %s </h1></b><br>", "cli" => "%s\n" ]; 
+
+    private function __construct($database=false){
+     	//detect sapi
+     	$this->interface = php_sapi_name() == 'cli' ? "cli" : "web";
 
      try{
-     	 $this->interface = php_sapi_name() == 'cli' ? "cli" : "web"; //detect sapi
-        self::$_mysqli = new \mysqli($this->datos['host'],$this->datos['user'], $this->datos['pass']); // instance datatabase
+     	// instance datatabase
+    	self::$_mysqli = new \mysqli($this->datos['host'],$this->datos['user'], $this->datos['pass']); 
      
       if (self::$_mysqli->connect_error) {
             throw new Exception(sprintf($this->msg_errors[$this->interface],'Connect Error ' . self::$_mysqli->connect_errno . ': ' . self::$_mysqli->connect_error, self::$_mysqli->connect_errno));
@@ -36,7 +51,7 @@ class GestionDB{
       return self::$instancia;
     }
 
-    // function simple query
+    // function simple query no return -> insert,delete,upgrade
     public function CS($sql){
 
       $consulta = self::$_mysqli->query($sql);
@@ -48,15 +63,15 @@ class GestionDB{
 
     }
 
-    // function multople query!
+    // function multiple query -> insert
     public function CM($sql){
     	$consulta = self::$_mysqli->multi_query($sql);
     	if(!$consulta)
     		die(sprintf($this->msg_errors[$this->interface],self::$_mysqli->error));
-      return true;
+    	return true;
     }
 
-    // function query return
+    // function query return -> select
     public function CR($sql){
       $consulta = self::$_mysqli->prepare($sql);
 
@@ -67,21 +82,8 @@ class GestionDB{
         return $consulta->get_result();
       else
         die(sprintf($this->msg_errors[$this->interface],self::$_mysqli->error));
-
-      $consulta->close();
     }
 
-    // restore databasess
-    public function Restore($sqlfilename){
-
-    	// check file name
- 		self::CD($sqlfilename);
-
-		// load file
-		$sql = file_get_contents($sqlfilename);
-		//execute file
-		return self::CM($sql);
-    }
 
     //validate file
     private function CD($file){
@@ -99,17 +101,43 @@ class GestionDB{
 		return true;
     }
 
-    // drop databases only example
-    public function DropDB(){
+    // drop databases only test script
+    public function DropDB($databases=false){
+    	if(!$databases){
+			foreach ($this->dbs as $db) {
+				self::CS('DROP DATABASE '.$db.";");
+			}
+		}else{
 
-		foreach ($this->dbs as $db) {
-			self::CS('DROP DATABASE '.$db.";");
+			$dbs = is_array($databases) ? $databases : explode(',',$databases);
+			foreach ($dbs as $db) {
+				self::CS('DROP DATABASE '.$db.";");
+			}
 		}
 		return true;
     }
 
+    // restore databasess 
+    public function Restore($sqlfilename,$database=false){
+
+    	// restore specific database;
+    	if($database){
+    		self::CS("CREATE DATABASE IF NOT EXISTS ".$database);
+    		self::CS("use ".$database);
+    	}
+
+    	// check file name
+ 		self::CD($sqlfilename);
+
+		// load file
+		$sql = file_get_contents($sqlfilename);
+
+		//execute file
+		return self::CM($sql);
+    }
+
     // backup databases;
-    public function Backup($dbs = '*', $sqlfilename=false){
+    public function Backup($sqlfilename=false,$databases = '*'){
       
 	      $return="";
 
@@ -117,8 +145,8 @@ class GestionDB{
 	      	 $sqlfilename = "dumpsql-".date('ymd').".sql";
 	      }
 
-	      //all tables
-	      if($dbs == '*'){
+	      //all databases
+	      if($databases == '*'){
 	        $dbs = array();
 	        $result = self::CR('SHOW DATABASES');
 	        while($row = $result->fetch_row()){
@@ -127,32 +155,41 @@ class GestionDB{
 	        }
 	      }
 	      else{
-	        $dbs = is_array($dbs) ? $dbs : explode(',',$dbs);
+	        $dbs = is_array($databases) ? $databases : explode(',',$databases);
 	      }
 
+		if(empty($dbs))
+			die(sprintf($this->msg_errors[$this->interface],"ups! 0 databases select for export!"));
+
 	    $this->dbs=$dbs;
+
 	    foreach($dbs as $db){
 
 	    	$tables = array();
-		    $return.= "CREATE DATABASE IF NOT EXISTS ". $db.";\n";
-		    $return.= "USE ". $db.";\n";
+	    	if($databases == '*'){
+	    		$return.= "CREATE DATABASE IF NOT EXISTS ". $db.";\n";
+		    	$return.= "USE ". $db.";\n";
+	    	}
+
 		    $result = self::CR('SHOW TABLES IN '.$db);
 
+		    //all tables
 		    while($row = $result->fetch_row()){
 		    	$tables[]= $row[0];
 		    }
+
 		    foreach($tables as $table){
 		        $result = self::CR('SELECT * FROM '. $db. '.'.$table);
 		        $num_fields = $result->field_count;
 		        
-		        $return.= 'DROP TABLE IF EXISTS '.$db.'.'.$table.';';
+		        $return.= 'DROP TABLE IF EXISTS '.$table.';';
 		        $qr=self::CR('SHOW CREATE TABLE '.$db.'.'.$table);
 		        $row2 = $qr->fetch_row();
 		        $return.= "\n\n".$row2[1].";\n\n";
 		      
 		        for ($i = 0; $i < $num_fields; $i++) {
 		          while($row = $result->fetch_row()){
-		            $return.= 'INSERT INTO '.$db.'.'.$table.' VALUES(';
+		            $return.= 'INSERT INTO '.$table.' VALUES(';
 		            for($j=0; $j < $num_fields; $j++) {
 		              $row[$j] = addslashes($row[$j]);
 		              $row[$j] = preg_replace("#\n#","\\n",$row[$j]);
@@ -180,21 +217,5 @@ class GestionDB{
     }
 
   }
-
-$r = php_sapi_name()=="cli" ? "\n" : "<br>";
-
-$conn = GestionDB::getDB();
-
-if($conn->Backup("*","databases.sql")){
-	echo "backup creado".$r;
-}
-
-if($conn->DropDB()){
-	echo "databases eliminadas".$r;
-}
-
-if(	$conn->Restore("dumpsql-19012s6.sql")){
-	echo "databases recreadas!".$r;
-}
 
 ?>
