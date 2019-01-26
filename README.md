@@ -18,7 +18,7 @@ if($conn->Backup("dbtest.sql","dbtest")){
 	echo "backup create!";
 }
 //import 1 database in dbtest
-if(	$conn->Restore("dbtest.sql","dbtest")){
+if($conn->Restore("dbtest.sql","dbtest")){
 	echo "databases recreate!".$r;
 }
 ```
@@ -33,7 +33,7 @@ if($conn->Backup("alldb.sql")){
 }
 
 //import all dbs
-if(	$conn->Restore("alldb.sql")){
+if($conn->Restore("alldb.sql")){
 	echo "databases recreate!".$r;
 }
 ```
