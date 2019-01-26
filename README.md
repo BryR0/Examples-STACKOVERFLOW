@@ -17,7 +17,7 @@ $conn = GestionDB::getDB();
 if($conn->Backup("dbtest.sql","dbtest")){
 	echo "backup create!";
 }
-//import 1 schema in file dbtest
+//import 1 database in dbtest
 if(	$conn->Restore("dbtest.sql","dbtest")){
 	echo "databases recreate!".$r;
 }
