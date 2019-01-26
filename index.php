@@ -2,30 +2,32 @@
 
 class GestionDB{
 
-   private $datos = array(
+   private $datos = array( // conexion credentials
 					      "host" => "localhost", 
 					      "user" => "username",
 					      "pass" => "password"
 					    );
-   	private $dbe = ["information_schema","mysql","performance_schema","phpmyadmin"];
-   	private $dbs;
-    private static $_mysqli;
-    private static $instancia;
-
+   	private $dbe = ["information_schema","mysql","performance_schema","phpmyadmin"]; //database exclude
+   	private $dbs;  // databases select
+    private static $_mysqli; // mysqli
+    private static $instancia; // singleton
+    private $interface; // interface type
+    private $msg_errors = ["web" => "<b><p style='color:red;'> %s </p></b><br>", "cli" => "%s\n" ]; // print errors
 
     private function __construct(){
 
      try{
-
-        self::$_mysqli = new \mysqli($this->datos['host'],$this->datos['user'], $this->datos['pass']);
+     	 $this->interface = php_sapi_name() == 'cli' ? "cli" : "web"; //detect sapi
+        self::$_mysqli = new \mysqli($this->datos['host'],$this->datos['user'], $this->datos['pass']); // instance datatabase
      
       if (self::$_mysqli->connect_error) {
-            throw new Exception('Connect Error ' . self::$_mysqli->connect_errno . ': ' . self::$_mysqli->connect_error, self::$_mysqli->connect_errno);
+            throw new Exception(sprintf($this->msg_errors[$this->interface],'Connect Error ' . self::$_mysqli->connect_errno . ': ' . self::$_mysqli->connect_error, self::$_mysqli->connect_errno));
         }
 
       }catch(MysqliEXception $e){}
     }
 
+    //instance singleto 
      public static function getDB(){
       if (!isset(self::$instancia)) {
             $miclase = __CLASS__;
@@ -34,63 +36,70 @@ class GestionDB{
       return self::$instancia;
     }
 
-
+    // function simple query
     public function CS($sql){
 
       $consulta = self::$_mysqli->query($sql);
       
       if (!$consulta)
-          die(self::$_mysqli->error);
+          die(sprintf($this->msg_errors[$this->interface],self::$_mysqli->error));
 
       return true;
 
     }
 
+    // function multople query!
     public function CM($sql){
     	$consulta = self::$_mysqli->multi_query($sql);
     	if(!$consulta)
-    		die(self::$_mysqli->error);
+    		die(sprintf($this->msg_errors[$this->interface],self::$_mysqli->error));
       return true;
     }
 
+    // function query return
     public function CR($sql){
       $consulta = self::$_mysqli->prepare($sql);
 
       if (!$consulta)
-          die(self::$_mysqli->error);
+          die(sprintf($this->msg_errors[$this->interface],self::$_mysqli->error));
 
       if ($consulta->execute())
         return $consulta->get_result();
       else
-        die(self::$_mysqli->error);
+        die(sprintf($this->msg_errors[$this->interface],self::$_mysqli->error));
 
       $consulta->close();
     }
 
+    // restore databasess
     public function Restore($sqlfilename){
 
+    	// check file name
  		self::CD($sqlfilename);
-		// si todo va bien leemos el archivo
+
+		// load file
 		$sql = file_get_contents($sqlfilename);
+		//execute file
 		return self::CM($sql);
     }
 
-    public function CD($file){
-    	// validamos que exista el archivo
+    //validate file
+    private function CD($file){
 		
+		//validate exists
 		if (!file_exists($file)) {
-			die("no existe la ruta o el archivo");
+			die(sprintf($this->msg_errors[$this->interface],"no existe la ruta o el archivo!"));
 		}
 
-		// validamos que sea legible
+		// validate Permissions
 		if (!is_readable($file)) {
-			die("no se puede leer la ruta o el archivo!");
+			die(sprintf($this->msg_errors[$this->interface],"no se puede leer la ruta o el archivo!"));
 		}
 
 		return true;
     }
 
-
+    // drop databases only example
     public function DropDB(){
 
 		foreach ($this->dbs as $db) {
@@ -99,7 +108,8 @@ class GestionDB{
 		return true;
     }
 
-    public function Backup($sqlfilename=false,$dbs = '*'){
+    // backup databases;
+    public function Backup($dbs = '*', $sqlfilename=false){
       
 	      $return="";
 
@@ -124,8 +134,6 @@ class GestionDB{
 	    foreach($dbs as $db){
 
 	    	$tables = array();
-		    $result = self::CR('SHOW CREATE DATABASE '.$db);
-		    $row = $result->fetch_row();
 		    $return.= "CREATE DATABASE IF NOT EXISTS ". $db.";\n";
 		    $return.= "USE ". $db.";\n";
 		    $result = self::CR('SHOW TABLES IN '.$db);
@@ -166,27 +174,27 @@ class GestionDB{
       return true;
     }
 
+    // destruct mysqli instance
     public function __destruct(){
       self::$_mysqli->close();
     }
 
   }
 
+$r = php_sapi_name()=="cli" ? "\n" : "<br>";
 
 $conn = GestionDB::getDB();
 
-
-if($conn->Backup()){
-	echo "backup creado!<br>";
+if($conn->Backup("*","databases.sql")){
+	echo "backup creado".$r;
 }
 
 if($conn->DropDB()){
-	echo "databases eliminadas!<br>";
-
+	echo "databases eliminadas".$r;
 }
 
-if(	$conn->Restore("dumpsql-190126.sql")){
-	echo "databases recreadas!<br>";
+if(	$conn->Restore("dumpsql-19012s6.sql")){
+	echo "databases recreadas!".$r;
 }
 
 ?>
