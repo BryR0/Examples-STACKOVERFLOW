@@ -3,7 +3,7 @@
 
 Note
 ============
-export all database or specific squema
+export all database or specific schema
 
 
 Usage
@@ -15,11 +15,11 @@ database export/import 1 schema
 //export 1 schema in file dbtest.sql
 $conn = GestionDB::getDB();
 if($conn->Backup("dbtest.sql","dbtest")){
-	echo "backup creado";
+	echo "backup create!";
 }
 //import 1 schema in file dbtest
 if(	$conn->Restore("dbtest.sql","dbtest")){
-	echo "databases recreadas!".$r;
+	echo "databases recreate!".$r;
 }
 ```
 
@@ -29,11 +29,11 @@ export/import all database schema
 //export all schema
 $conn = GestionDB::getDB();
 if($conn->Backup("alldb.sql")){
-	echo "backup creado";
+	echo "backup create!";
 }
 
 //import all dbs
 if(	$conn->Restore("alldb.sql")){
-	echo "databases recreadas!".$r;
+	echo "databases recreate!".$r;
 }
 ```
