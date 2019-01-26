@@ -12,7 +12,7 @@ class GestionDB{
     private static $_mysqli; // mysqli
     private static $instancia; // singleton
     private $interface; // interface type
-    private $msg_errors = ["web" => "<b><p style='color:red;'> %s </p></b><br>", "cli" => "%s\n" ]; // print errors
+    private $msg_errors = ["web" => "<b><h1 style='color:red;'> %s </h1></b><br>", "cli" => "%s\n" ]; // print errors
 
     private function __construct(){
 
