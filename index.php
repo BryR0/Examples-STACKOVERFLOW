@@ -99,7 +99,7 @@ class GestionDB{
 		return true;
     }
 
-    public function Backup($dbs = '*', $sqlfilename=false){
+    public function Backup($sqlfilename=false,$dbs = '*'){
       
 	      $return="";
 
